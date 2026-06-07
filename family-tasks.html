@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="theme-color" content="#0c1118" />
+<title>Family Tasks</title>
+
+<!-- ===================================================================== -->
+<!--  FIREBASE (optional). Paste your config below to sync across devices.  -->
+<!--  Leave it as-is and the app still works, saving to this device only.   -->
+<!--  Setup takes ~5 min - see the SETUP-GUIDE that came with this file.    -->
+<!-- ===================================================================== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0c1118; --bg-2:#0f1620; --card:#151e2a; --card-2:#1a2532;
+  --line:#243140; --line-2:#2d3b4d;
+  --text:#e7eef6; --muted:#93a2b5; --faint:#62748a;
+  --accent:#2dd4bf; --accent-2:#38bdf8; --accent-soft:rgba(45,212,191,.13);
+  --accent-line:rgba(45,212,191,.35);
+  --rose:#fb6f84; --amber:#f7b955; --sky:#5bb6f5; --ok:#34d399;
+  --shadow:0 10px 30px -12px rgba(0,0,0,.6);
+  --r:14px; --r-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:radial-gradient(1200px 700px at 80% -10%,#102132 0%,transparent 55%),
+             radial-gradient(900px 600px at -5% 0%,#11202b 0%,transparent 50%),
+             var(--bg);
+  color:var(--text); line-height:1.5; -webkit-font-smoothing:antialiased;
+  min-height:100%;
+}
+::selection{background:var(--accent-soft)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--text)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:none}
+
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 80px}
+
+/* ---------- Header ---------- */
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0}
+.logo{
+  width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px -6px rgba(45,212,191,.6);
+}
+.logo svg{width:24px;height:24px;stroke:#06222a;stroke-width:2.6}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:-.2px;line-height:1.15}
+.brand p{font-size:12.5px;color:var(--muted);font-weight:500}
+.brand p b{color:var(--accent);font-weight:600}
+
+.hbtns{display:flex;align-items:center;gap:8px}
+.iam{
+  display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+  padding:7px 10px 7px 12px;border-radius:11px;
+}
+.iam label{font-size:11.5px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.iam select{background:none;border:none;font-weight:600;font-size:13.5px;cursor:pointer;padding-right:4px}
+.iam select option{background:var(--card-2)}
+
+.pill{
+  display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;
+  padding:8px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+  color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.pill:hover{border-color:var(--line-2)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.pill.live{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.pill.live .dot{background:var(--accent);box-shadow:0 0 0 0 var(--accent);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(45,212,191,.5)}70%{box-shadow:0 0 0 6px rgba(45,212,191,0)}100%{box-shadow:0 0 0 0 rgba(45,212,191,0)}}
+.icon-btn{
+  width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;color:var(--muted);transition:.15s;flex:none;
+}
+.icon-btn:hover{color:var(--text);border-color:var(--line-2)}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
+
+/* ---------- Add task ---------- */
+.add{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:6px 6px 6px 8px;box-shadow:var(--shadow);margin-bottom:18px;transition:.2s;
+}
+.add:focus-within{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow)}
+.add-top{display:flex;align-items:center;gap:6px}
+.add-circle{width:26px;height:26px;border-radius:50%;border:2px dashed var(--line-2);flex:none;margin-left:6px}
+.add input.title{flex:1;background:none;border:none;font-size:15.5px;font-weight:500;padding:13px 6px}
+.add input.title::placeholder{color:var(--faint)}
+.add-go{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#06222a;font-weight:700;
+  font-size:14px;padding:10px 18px;border-radius:10px;transition:.15s;flex:none;
+}
+.add-go:hover{filter:brightness(1.07)}
+.add-go:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.add-opts{display:flex;gap:8px;padding:4px 6px 8px 40px;flex-wrap:wrap}
+.opt{
+  display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);
+  border-radius:9px;padding:7px 10px;font-size:13px;color:var(--muted);transition:.15s;
+}
+.opt:hover{border-color:var(--line-2)}
+.opt svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none;flex:none}
+.opt select,.opt input{background:none;border:none;color:var(--text);font-weight:500;cursor:pointer}
+.opt input[type=date]{color-scheme:dark;min-width:120px}
+.opt select option{background:var(--card-2)}
+.opt.set{color:var(--text);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px}
+.seg button{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);transition:.15s}
+.seg button.on{background:var(--accent-soft);color:var(--accent)}
+.tool-select{
+  display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);
+  border-radius:11px;padding:8px 11px;font-size:13px;color:var(--muted);
+}
+.tool-select svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none}
+.tool-select select{background:none;border:none;color:var(--text);font-weight:600;cursor:pointer}
+.tool-select select option{background:var(--card-2)}
+.spacer{margin-left:auto}
+.count-chip{font-size:12.5px;color:var(--faint);font-weight:600;padding:0 4px}
+
+/* ---------- Task list ---------- */
+.section-label{
+  display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700;color:var(--faint);
+  text-transform:uppercase;letter-spacing:.7px;margin:22px 4px 10px;cursor:pointer;user-select:none;
+}
+.section-label .chev{transition:.2s;display:inline-flex}
+.section-label.collapsed .chev{transform:rotate(-90deg)}
+.section-label .n{background:var(--card-2);color:var(--muted);border-radius:20px;padding:1px 8px;font-size:11px}
+.section-label .ln{flex:1;height:1px;background:var(--line)}
+
+.list{display:flex;flex-direction:column;gap:8px}
+.task{
+  display:flex;align-items:flex-start;gap:13px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:13px 14px;transition:.16s;cursor:pointer;position:relative;
+  animation:pop .25s ease;
+}
+@keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.task:hover{border-color:var(--line-2);background:var(--card-2)}
+.task.done{opacity:.55}
+.task.prio-high{border-left:3px solid var(--rose)}
+.task.prio-medium{border-left:3px solid var(--amber)}
+.task.prio-low{border-left:3px solid var(--sky)}
+
+.check{
+  width:22px;height:22px;border-radius:50%;border:2px solid var(--line-2);flex:none;margin-top:1px;
+  display:grid;place-items:center;transition:.16s;background:transparent;
+}
+.check:hover{border-color:var(--accent)}
+.check svg{width:13px;height:13px;stroke:#06222a;stroke-width:3;fill:none;opacity:0;transform:scale(.4);transition:.16s}
+.task.done .check{background:var(--accent);border-color:var(--accent)}
+.task.done .check svg{opacity:1;transform:scale(1)}
+
+.t-body{flex:1;min-width:0}
+.t-title{font-size:15px;font-weight:500;word-break:break-word}
+.task.done .t-title{text-decoration:line-through;color:var(--muted)}
+.t-notes{font-size:13px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-meta{display:flex;align-items:center;gap:7px;margin-top:9px;flex-wrap:wrap}
+.t-meta:empty{display:none}
+
+.avatar{
+  width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  font-size:10px;font-weight:700;color:#fff;flex:none;
+}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  padding:3px 9px 3px 4px;border-radius:20px;background:var(--bg-2);border:1px solid var(--line);color:var(--muted);
+}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+  padding:4px 9px;border-radius:7px;background:var(--bg-2);border:1px solid var(--line);color:var(--muted);
+}
+.badge svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.2;fill:none}
+.badge.overdue{color:var(--rose);border-color:rgba(251,111,132,.35);background:rgba(251,111,132,.1)}
+.badge.today{color:var(--amber);border-color:rgba(247,185,85,.35);background:rgba(247,185,85,.1)}
+.badge.soon{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.prio-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:7px}
+.prio-tag svg{width:12px;height:12px;fill:currentColor}
+.prio-tag.high{color:var(--rose);background:rgba(251,111,132,.1)}
+.prio-tag.medium{color:var(--amber);background:rgba(247,185,85,.1)}
+.prio-tag.low{color:var(--sky);background:rgba(91,182,245,.1)}
+
+.t-del{
+  opacity:0;width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  color:var(--faint);transition:.15s;margin-top:-2px;
+}
+.task:hover .t-del{opacity:1}
+.t-del:hover{color:var(--rose);background:rgba(251,111,132,.12)}
+.t-del svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none}
+
+/* ---------- Empty ---------- */
+.empty{text-align:center;padding:60px 20px;color:var(--faint)}
+.empty .e-ic{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line)}
+.empty .e-ic svg{width:30px;height:30px;stroke:var(--accent);stroke-width:1.8;fill:none}
+.empty h3{color:var(--text);font-size:16px;font-weight:600;margin-bottom:5px}
+.empty p{font-size:13.5px;max-width:300px;margin:0 auto}
+
+/* ---------- Modal ---------- */
+.scrim{position:fixed;inset:0;background:rgba(4,8,12,.6);backdrop-filter:blur(4px);display:none;z-index:50;align-items:center;justify-content:center;padding:20px}
+.scrim.show{display:flex;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);border:1px solid var(--line-2);border-radius:18px;width:100%;max-width:440px;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.8);animation:rise .2s;max-height:90vh;overflow:auto;
+}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-h h2{font-size:16px;font-weight:700}
+.modal-b{padding:20px}
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.field input[type=text],.field textarea,.field select,.field input[type=date]{
+  width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;
+  font-size:14.5px;transition:.15s;color-scheme:dark;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent-line);background:var(--card-2)}
+.field textarea{resize:vertical;min-height:66px}
+.field select option{background:var(--card-2)}
+.row2{display:flex;gap:12px}
+.row2 .field{flex:1}
+.prio-pick{display:flex;gap:8px}
+.prio-pick button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg-2);font-size:13px;font-weight:600;color:var(--muted);transition:.15s}
+.prio-pick button.on.high{color:var(--rose);border-color:rgba(251,111,132,.45);background:rgba(251,111,132,.12)}
+.prio-pick button.on.medium{color:var(--amber);border-color:rgba(247,185,85,.45);background:rgba(247,185,85,.12)}
+.prio-pick button.on.low{color:var(--sky);border-color:rgba(91,182,245,.45);background:rgba(91,182,245,.12)}
+.prio-pick button.on.none{color:var(--text);border-color:var(--line-2);background:var(--card-2)}
+.modal-f{display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--line)}
+.btn{padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;transition:.15s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#06222a;font-weight:700;flex:1}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-ghost{background:var(--bg-2);border:1px solid var(--line);color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:var(--line-2)}
+.btn-danger{color:var(--rose);background:rgba(251,111,132,.1);border:1px solid rgba(251,111,132,.25)}
+.btn-danger:hover{background:rgba(251,111,132,.18)}
+
+/* People list */
+.people{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.person{display:flex;align-items:center;gap:11px;padding:9px 11px;background:var(--bg-2);border:1px solid var(--line);border-radius:11px}
+.person .nm{flex:1;font-weight:600;font-size:14px}
+.person .rm{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--faint)}
+.person .rm:hover{color:var(--rose);background:rgba(251,111,132,.12)}
+.person .rm svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none}
+.add-person{display:flex;gap:8px}
+.add-person input{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+.add-person input:focus{border-color:var(--accent-line)}
+.add-person button{padding:0 16px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:700;border:1px solid var(--accent-line)}
+
+.sync-box{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13px;color:var(--muted)}
+.sync-box .st{display:flex;align-items:center;gap:9px;font-weight:700;color:var(--text);margin-bottom:6px}
+.sync-box .st .dot{width:8px;height:8px;border-radius:50%}
+.sync-box code{background:var(--card-2);padding:1px 6px;border-radius:5px;font-size:12px;color:var(--accent)}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card-2);border:1px solid var(--line-2);color:var(--text);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:var(--shadow);opacity:0;transition:.25s;z-index:80;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:560px){
+  .wrap{padding:18px 14px 70px}
+  .brand p{display:none}
+  .iam label{display:none}
+  .add-go{padding:10px 14px}
+  .spacer{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div>
+        <h1>Family Tasks</h1>
+        <p id="subtitle">Shared to-dos for <b>everyone</b></p>
+      </div>
+    </div>
+    <div class="hbtns">
+      <div class="iam">
+        <label>I'm</label>
+        <select id="meSelect"></select>
+      </div>
+      <button class="pill" id="syncPill" title="Sync status"><span class="dot"></span><span id="syncText">This device</span></button>
+      <button class="icon-btn" id="settingsBtn" title="People & settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    </div>
+  </header>
+
+  <!-- Add task -->
+  <div class="add">
+    <div class="add-top">
+      <span class="add-circle"></span>
+      <input class="title" id="newTitle" placeholder="Add a task…" autocomplete="off" />
+      <button class="add-go" id="addBtn" disabled>Add</button>
+    </div>
+    <div class="add-opts">
+      <label class="opt" id="optAssignee">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <select id="newAssignee"></select>
+      </label>
+      <label class="opt" id="optDue">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <input type="date" id="newDue" />
+      </label>
+      <label class="opt" id="optPrio">
+        <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V4"/></svg>
+        <select id="newPrio">
+          <option value="">No priority</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="seg">
+      <button id="segActive" class="on">To do</button>
+      <button id="segDone">Done</button>
+    </div>
+    <div class="tool-select">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <select id="whoFilter"></select>
+    </div>
+    <div class="tool-select spacer">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+      <select id="sortSelect">
+        <option value="due">Due date</option>
+        <option value="priority">Priority</option>
+        <option value="created">Newest</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="taskArea"></div>
+</div>
+
+<!-- Edit modal -->
+<div class="scrim" id="editScrim">
+  <div class="modal">
+    <div class="modal-h"><h2>Edit task</h2><button class="icon-btn" style="border:none;background:none" id="editClose"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-b">
+      <div class="field"><label>Task</label><input type="text" id="eTitle" /></div>
+      <div class="field"><label>Notes</label><textarea id="eNotes" placeholder="Add details…"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>Assigned to</label><select id="eAssignee"></select></div>
+        <div class="field"><label>Due date</label><input type="date" id="eDue" /></div>
+      </div>
+      <div class="field"><label>Priority</label>
+        <div class="prio-pick" id="ePrio">
+          <button data-p="" class="none">None</button>
+          <button data-p="low" class="low">Low</button>
+          <button data-p="medium" class="medium">Med</button>
+          <button data-p="high" class="high">High</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-danger" id="eDelete">Delete</button>
+      <button class="btn btn-primary" id="eSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="scrim" id="setScrim">
+  <div class="modal">
+    <div class="modal-h"><h2>People & sync</h2><button class="icon-btn" style="border:none;background:none" id="setClose"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-b">
+      <div class="field">
+        <label>Family & friends</label>
+        <div class="people" id="peopleList"></div>
+        <div class="add-person">
+          <input type="text" id="newPerson" placeholder="Add a person…" autocomplete="off" />
+          <button id="addPersonBtn">Add</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Syncing</label>
+        <div class="sync-box" id="syncBox"></div>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn btn-primary" id="setDone">Done</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================= CONFIG ======================= */
+/* Paste your Firebase project config between the braces to enable
+   real-time sync across everyone's devices. Leave empty to run
+   locally on this device only. */
+const firebaseConfig = {
+  apiKey: "AIzaSyBlvUQIz2ow6qatzOhs_f4CZMZDKMO5yT0",
+  authDomain: "let-me-know-if-i-can-help.firebaseapp.com",
+  projectId: "let-me-know-if-i-can-help",
+  storageBucket: "let-me-know-if-i-can-help.firebasestorage.app",
+  messagingSenderId: "487553850986",
+  appId: "1:487553850986:web:a921ef2774e67c051f7413",
+  measurementId: "G-6W8WNMK9FF"
+};
+/* ====================================================== */
+
+const $ = s => document.querySelector(s);
+const cloudReady = () =>
+  typeof firebase !== 'undefined' && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.apiKey;
+
+let db = null, MODE = 'local';
+const state = {
+  tasks: [],
+  members: [],
+  me: localStorage.getItem('ft_me') || '',
+  view: 'active',          // active | done
+  who: 'all',              // all | me | <name>
+  sort: localStorage.getItem('ft_sort') || 'due',
+  collapsedDone: false,
+  editing: null,
+  ePrio: ''
+};
+
+/* ---------- helpers ---------- */
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(16).slice(2));
+function localISO(d){const o=d.getTimezoneOffset();return new Date(d.getTime()-o*60000).toISOString().slice(0,10);}
+const todayStr = () => localISO(new Date());
+function initials(n){return (n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+function colorFor(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;return `hsl(${h%360} 52% 48%)`;}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function dueInfo(due){
+  if(!due) return null;
+  const base=new Date(todayStr()+'T00:00:00'), d=new Date(due+'T00:00:00');
+  const diff=Math.round((d-base)/86400000);
+  let label,cls='plain';
+  if(diff<0){cls='overdue';label=diff===-1?'Yesterday':`${Math.abs(diff)}d overdue`;}
+  else if(diff===0){cls='today';label='Today';}
+  else if(diff===1){cls='soon';label='Tomorrow';}
+  else if(diff<7){label=d.toLocaleDateString(undefined,{weekday:'short'});}
+  else{label=d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+  return {label,cls,diff};
+}
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* ======================= STORE ======================= */
+/* Abstracts local vs cloud. Mutations write through; reads come from state. */
+const Store = {
+  init(){
+    if(cloudReady()){
+      try{
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db=firebase.firestore();
+        MODE='cloud';
+        db.collection('tasks').onSnapshot(snap=>{
+          state.tasks=snap.docs.map(d=>({id:d.id,...d.data()}));
+          render();
+        },err=>{console.error(err);toast('Sync error – check Firestore rules');});
+        db.collection('meta').doc('members').onSnapshot(doc=>{
+          state.members=(doc.exists&&Array.isArray(doc.data().list))?doc.data().list:[];
+          if(!state.members.length) Store._seedMembers();
+          renderControls();render();
+        });
+        return;
+      }catch(e){console.error('Firebase init failed, using local',e);MODE='local';}
+    }
+    // local mode
+    MODE='local';
+    try{state.tasks=JSON.parse(localStorage.getItem('ft_tasks')||'[]');}catch(e){state.tasks=[];}
+    try{state.members=JSON.parse(localStorage.getItem('ft_members')||'[]');}catch(e){state.members=[];}
+    if(!state.members.length){state.members=['Me'];this._saveLocal();}
+  },
+  _saveLocal(){
+    if(MODE!=='local')return;
+    localStorage.setItem('ft_tasks',JSON.stringify(state.tasks));
+    localStorage.setItem('ft_members',JSON.stringify(state.members));
+  },
+  _seedMembers(){ if(MODE==='cloud') db.collection('meta').doc('members').set({list:['Me']}); },
+
+  addTask(t){
+    const task={id:uid(),title:t.title,notes:t.notes||'',assignee:t.assignee||'',
+      due:t.due||'',priority:t.priority||'',done:false,createdAt:Date.now(),completedAt:null};
+    if(MODE==='cloud'){const {id,...data}=task;db.collection('tasks').add(data);}
+    else{state.tasks.push(task);this._saveLocal();render();}
+  },
+  updateTask(id,patch){
+    if(MODE==='cloud'){db.collection('tasks').doc(id).update(patch);}
+    else{const t=state.tasks.find(x=>x.id===id);if(t)Object.assign(t,patch);this._saveLocal();render();}
+  },
+  deleteTask(id){
+    if(MODE==='cloud'){db.collection('tasks').doc(id).delete();}
+    else{state.tasks=state.tasks.filter(x=>x.id!==id);this._saveLocal();render();}
+  },
+  setMembers(list){
+    state.members=list;
+    if(MODE==='cloud'){db.collection('meta').doc('members').set({list});}
+    else{this._saveLocal();renderControls();render();}
+  }
+};
+
+/* ======================= RENDER ======================= */
+function memberOptions(sel,withAll,withMine){
+  let h='';
+  if(withAll)h+=`<option value="all">Everyone</option>`;
+  if(withMine)h+=`<option value="me">My tasks</option>`;
+  if(!withAll&&!withMine)h+=`<option value="">Unassigned</option>`;
+  h+=state.members.map(m=>`<option value="${esc(m)}"${sel===m?' selected':''}>${esc(m)}</option>`).join('');
+  return h;
+}
+
+function renderControls(){
+  // "I'm" selector
+  const meSel=$('#meSelect');
+  meSel.innerHTML=`<option value="">Choose…</option>`+state.members.map(m=>`<option value="${esc(m)}"${state.me===m?' selected':''}>${esc(m)}</option>`).join('');
+  meSel.value=state.me||'';
+  // who filter
+  const wf=$('#whoFilter');
+  wf.innerHTML=memberOptions(null,true,!!state.me);
+  wf.value=state.who;
+  // new task assignee
+  const na=$('#newAssignee');
+  const cur=na.value;
+  na.innerHTML=`<option value="">Anyone</option>`+state.members.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  na.value=cur|| (state.me&&state.members.includes(state.me)?state.me:'');
+  // subtitle
+  $('#subtitle').innerHTML = state.me?`Helping out as <b>${esc(state.me)}</b>`:`Shared to-dos for <b>everyone</b>`;
+  // sort
+  $('#sortSelect').value=state.sort;
+}
+
+function avatarHTML(name){
+  if(!name)return '';
+  return `<span class="avatar" style="background:${colorFor(name)}">${esc(initials(name))}</span>`;
+}
+
+function taskHTML(t){
+  const di=dueInfo(t.due);
+  let meta='';
+  if(t.assignee) meta+=`<span class="chip">${avatarHTML(t.assignee)}${esc(t.assignee)}</span>`;
+  if(di && !t.done) meta+=`<span class="badge ${di.cls}"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>${di.label}</span>`;
+  else if(t.due && t.done) meta+=`<span class="badge"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>${new Date(t.due+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>`;
+  if(t.priority && !t.done){
+    const lbl={high:'High',medium:'Medium',low:'Low'}[t.priority];
+    meta+=`<span class="prio-tag ${t.priority}"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>${lbl}</span>`;
+  }
+  const notes=t.notes?`<div class="t-notes">${esc(t.notes)}</div>`:'';
+  return `<div class="task ${t.done?'done':''} ${t.priority&&!t.done?'prio-'+t.priority:''}" data-id="${t.id}">
+    <button class="check" data-act="toggle" aria-label="Complete"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="t-body" data-act="edit">
+      <div class="t-title">${esc(t.title)}</div>${notes}
+      <div class="t-meta">${meta}</div>
+    </div>
+    <button class="t-del" data-act="del" aria-label="Delete"><svg viewBox="0 0 24 24"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+  </div>`;
+}
+
+function filtered(){
+  let t=state.tasks.slice();
+  if(state.who==='me'&&state.me)t=t.filter(x=>x.assignee===state.me);
+  else if(state.who!=='all'&&state.who!=='me')t=t.filter(x=>x.assignee===state.who);
+  return t;
+}
+const PR={high:0,medium:1,low:2,'':3};
+function sortActive(a,b){
+  if(state.sort==='created')return b.createdAt-a.createdAt;
+  if(state.sort==='priority'){
+    const p=(PR[a.priority]??3)-(PR[b.priority]??3);if(p)return p;
+  }
+  const ad=a.due||'9999',bd=b.due||'9999';
+  if(ad!==bd)return ad<bd?-1:1;
+  return a.createdAt-b.createdAt;
+}
+
+function render(){
+  const area=$('#taskArea');
+  const all=filtered();
+  const active=all.filter(t=>!t.done).sort(sortActive);
+  const done=all.filter(t=>t.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  let html='';
+
+  if(state.view==='active'){
+    if(active.length){
+      html+=`<div class="list">${active.map(taskHTML).join('')}</div>`;
+    }else{
+      html+=emptyHTML();
+    }
+    if(done.length){
+      html+=`<div class="section-label ${state.collapsedDone?'collapsed':''}" id="doneToggle">
+        <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+        Completed <span class="n">${done.length}</span><span class="ln"></span></div>`;
+      if(!state.collapsedDone) html+=`<div class="list">${done.map(taskHTML).join('')}</div>`;
+    }
+  }else{
+    html+= done.length?`<div class="list">${done.map(taskHTML).join('')}</div>`:emptyDoneHTML();
+  }
+  area.innerHTML=html;
+
+  // counts
+  const total=filtered().filter(t=>!t.done).length;
+  document.title = total?`(${total}) Family Tasks`:'Family Tasks';
+
+  // sync pill
+  const pill=$('#syncPill');
+  if(MODE==='cloud'){pill.classList.add('live');$('#syncText').textContent='Synced';}
+  else{pill.classList.remove('live');$('#syncText').textContent='This device';}
+}
+
+function emptyHTML(){
+  const who=state.who==='all'?'':state.who==='me'?' assigned to you':` for ${state.who}`;
+  return `<div class="empty"><div class="e-ic"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+    <h3>All clear${who?'':'!'}</h3><p>No tasks${who} right now. Add one above to get started.</p></div>`;
+}
+function emptyDoneHTML(){
+  return `<div class="empty"><div class="e-ic"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></div>
+    <h3>Nothing done yet</h3><p>Completed tasks will gather here.</p></div>`;
+}
+
+/* ======================= MODALS ======================= */
+function openEdit(id){
+  const t=state.tasks.find(x=>x.id===id);if(!t)return;
+  state.editing=id;state.ePrio=t.priority||'';
+  $('#eTitle').value=t.title;
+  $('#eNotes').value=t.notes||'';
+  $('#eAssignee').innerHTML=`<option value="">Anyone</option>`+state.members.map(m=>`<option value="${esc(m)}"${t.assignee===m?' selected':''}>${esc(m)}</option>`).join('');
+  $('#eDue').value=t.due||'';
+  setPrioPick(t.priority||'');
+  $('#editScrim').classList.add('show');
+  setTimeout(()=>$('#eTitle').focus(),50);
+}
+function setPrioPick(p){
+  document.querySelectorAll('#ePrio button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+}
+function closeEdit(){$('#editScrim').classList.remove('show');state.editing=null;}
+
+function openSettings(){renderPeople();renderSyncBox();$('#setScrim').classList.add('show');}
+function closeSettings(){$('#setScrim').classList.remove('show');}
+function renderPeople(){
+  $('#peopleList').innerHTML=state.members.map(m=>`<div class="person">
+    ${avatarHTML(m)}<span class="nm">${esc(m)}</span>
+    <button class="rm" data-rm="${esc(m)}" title="Remove"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>`).join('')
+    || `<p style="color:var(--faint);font-size:13px">No one added yet.</p>`;
+}
+function renderSyncBox(){
+  const box=$('#syncBox');
+  if(MODE==='cloud'){
+    box.innerHTML=`<div class="st"><span class="dot" style="background:var(--accent)"></span>Synced across devices</div>
+      Changes appear for everyone in real time. Share this file (or host it) and they'll see the same list.`;
+  }else{
+    box.innerHTML=`<div class="st"><span class="dot" style="background:var(--faint)"></span>Saved on this device</div>
+      Tasks are stored in this browser only. To sync across phones, paste your Firebase config into the <code>FIREBASE_CONFIG</code> block near the bottom of this file — see the setup guide.`;
+  }
+}
+
+/* ======================= EVENTS ======================= */
+function tryAdd(){
+  const title=$('#newTitle').value.trim();if(!title)return;
+  Store.addTask({title,assignee:$('#newAssignee').value,due:$('#newDue').value,priority:$('#newPrio').value});
+  $('#newTitle').value='';$('#newDue').value='';$('#newPrio').value='';
+  $('#optDue').classList.remove('set');$('#optPrio').classList.remove('set');
+  $('#addBtn').disabled=true;
+  $('#newTitle').focus();
+}
+$('#newTitle').addEventListener('input',e=>$('#addBtn').disabled=!e.target.value.trim());
+$('#newTitle').addEventListener('keydown',e=>{if(e.key==='Enter')tryAdd();});
+$('#addBtn').addEventListener('click',tryAdd);
+$('#newDue').addEventListener('change',e=>$('#optDue').classList.toggle('set',!!e.target.value));
+$('#newPrio').addEventListener('change',e=>$('#optPrio').classList.toggle('set',!!e.target.value));
+
+$('#meSelect').addEventListener('change',e=>{state.me=e.target.value;localStorage.setItem('ft_me',state.me);renderControls();render();});
+$('#whoFilter').addEventListener('change',e=>{state.who=e.target.value;render();});
+$('#sortSelect').addEventListener('change',e=>{state.sort=e.target.value;localStorage.setItem('ft_sort',state.sort);render();});
+$('#segActive').addEventListener('click',()=>{state.view='active';$('#segActive').classList.add('on');$('#segDone').classList.remove('on');render();});
+$('#segDone').addEventListener('click',()=>{state.view='done';$('#segDone').classList.add('on');$('#segActive').classList.remove('on');render();});
+
+// task interactions (delegated)
+$('#taskArea').addEventListener('click',e=>{
+  const toggle=e.target.closest('#doneToggle');
+  if(toggle){state.collapsedDone=!state.collapsedDone;render();return;}
+  const el=e.target.closest('.task');if(!el)return;
+  const id=el.dataset.id;
+  const act=e.target.closest('[data-act]')?.dataset.act;
+  if(act==='toggle'){
+    const t=state.tasks.find(x=>x.id===id);
+    Store.updateTask(id,{done:!t.done,completedAt:!t.done?Date.now():null});
+  }else if(act==='del'){
+    Store.deleteTask(id);toast('Task deleted');
+  }else{
+    openEdit(id);
+  }
+});
+
+// edit modal
+$('#editClose').addEventListener('click',closeEdit);
+$('#editScrim').addEventListener('click',e=>{if(e.target===$('#editScrim'))closeEdit();});
+document.querySelectorAll('#ePrio button').forEach(b=>b.addEventListener('click',()=>{state.ePrio=b.dataset.p;setPrioPick(b.dataset.p);}));
+$('#eSave').addEventListener('click',()=>{
+  if(!state.editing)return;
+  const title=$('#eTitle').value.trim();if(!title){toast('Task needs a title');return;}
+  Store.updateTask(state.editing,{title,notes:$('#eNotes').value.trim(),assignee:$('#eAssignee').value,due:$('#eDue').value,priority:state.ePrio});
+  closeEdit();
+});
+$('#eDelete').addEventListener('click',()=>{if(state.editing){Store.deleteTask(state.editing);closeEdit();toast('Task deleted');}});
+
+// settings modal
+$('#settingsBtn').addEventListener('click',openSettings);
+$('#syncPill').addEventListener('click',openSettings);
+$('#setClose').addEventListener('click',closeSettings);
+$('#setDone').addEventListener('click',closeSettings);
+$('#setScrim').addEventListener('click',e=>{if(e.target===$('#setScrim'))closeSettings();});
+function addPerson(){
+  const v=$('#newPerson').value.trim();if(!v)return;
+  if(state.members.includes(v)){toast('Already added');return;}
+  Store.setMembers([...state.members,v]);
+  $('#newPerson').value='';
+  setTimeout(()=>{renderPeople();renderControls();},60);
+}
+$('#addPersonBtn').addEventListener('click',addPerson);
+$('#newPerson').addEventListener('keydown',e=>{if(e.key==='Enter')addPerson();});
+$('#peopleList').addEventListener('click',e=>{
+  const rm=e.target.closest('[data-rm]');if(!rm)return;
+  const name=rm.dataset.rm;
+  Store.setMembers(state.members.filter(m=>m!==name));
+  if(state.me===name){state.me='';localStorage.setItem('ft_me','');}
+  if(state.who===name)state.who='all';
+  setTimeout(()=>{renderPeople();renderControls();render();},60);
+});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEdit();closeSettings();}});
+
+/* ======================= BOOT ======================= */
+Store.init();
+renderControls();
+render();
+</script>
+</body>
+</html>
